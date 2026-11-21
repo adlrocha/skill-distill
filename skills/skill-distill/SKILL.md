@@ -130,6 +130,14 @@ python3 scripts/distill.py verdict runs/<task> --iter N --trial K \
 
 How to judge well (learned on real runs):
 
+- **Judge craft at full resolution, side by side.** Feature parity is not "as good". In the pilot, all
+  three trials had every feature and matched at thumbnail size; I scored them 8.5–9 and the user rejected
+  them at once ("not even close in quality"). Up close the student worlds were sparse and plain. Capture both at
+  2× scale, look at the same region of each, and list concrete craft gaps (detail per object, density,
+  typography, motion) before you score.
+- **The student often cannot see.** Give it a number it can check for each visual property you care about.
+  In the pilot, "share of screen cells with visible detail" separated the reference (56%) from rejected
+  trials (33–40%); the student skill got a script that prints it with a map of the empty regions.
 - **The student's final message is not evidence.** Students routinely say "verified, all tests pass".
   Run the result yourself: the checks, then drive it by hand the way a user would (walk up, press the key,
   click the button) and look at the frame.

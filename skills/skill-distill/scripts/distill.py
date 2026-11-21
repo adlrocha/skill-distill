@@ -269,7 +269,7 @@ def cmd_ledger(a):
 
 
 def imgs(d):
-    return sorted(Path(d).glob("*.png")) if Path(d).exists() else []
+    return sorted([*Path(d).glob("*.png"), *Path(d).glob("*.jpg")]) if Path(d).exists() else []
 
 
 def cmd_report(a):
