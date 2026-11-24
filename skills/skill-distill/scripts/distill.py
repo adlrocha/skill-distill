@@ -23,7 +23,15 @@ Run layout (RUN is any directory, e.g. runs/<task>):
   iters/NN/tK/      workspace/, trace/, prompt.md, run.sh, exit_code, evidence/, verdict.json
   ledger.jsonl      one line per verdict, and the user's final decision
 """
-import argparse, datetime as dt, html, json, os, shutil, subprocess, sys, time
+import argparse
+import datetime as dt
+import html
+import json
+import os
+import shutil
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -40,7 +48,8 @@ def now():
 
 def sh(cmd, **kw):
     kw.setdefault("timeout", 600)
-    return subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True, **kw)
+    return subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True,
+                          check=kw.pop("check", False), **kw)
 
 
 def load(run):
@@ -211,7 +220,7 @@ def collect(ws, out, checks, trace=None):
     if checks.exists():
         env = {**os.environ, "WORKSPACE": str(ws), "OUT": str(out)}
         try:
-            r = subprocess.run(["bash", str(checks)], cwd=ws, env=env, capture_output=True, text=True, timeout=1800)
+            r = subprocess.run(["bash", str(checks)], cwd=ws, env=env, capture_output=True, text=True, timeout=1800, check=False)
             (out / "checks.log").write_text(r.stdout + "\n--- stderr ---\n" + r.stderr)
             result = r.returncode
         except subprocess.TimeoutExpired:
