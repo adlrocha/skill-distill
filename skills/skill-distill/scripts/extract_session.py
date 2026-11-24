@@ -15,13 +15,18 @@ System, developer and harness-injected text (AGENTS.md, CLAUDE.md, <system-remin
 context) is dropped: it is private to the machine and is not part of what the agent did.
 Long tool outputs are clipped in the summary only; the original log is never modified.
 """
-import argparse, glob, json, os, re, sys
+import argparse
+import glob
+import json
+import os
+import re
+import sys
 from pathlib import Path
 
 CLIP_CMD = 600      # chars of a command / tool input shown per step
 CLIP_OUT = 400      # chars of a tool output shown per step
 INJECTED = re.compile(r"<(system-reminder|environment_context|user_instructions|permissions instructions|"
-                      r"collaboration_mode|skill|turn_aborted)[^>]*>.*?</\1>", re.S)
+                      r"collaboration_mode|skill|turn_aborted)[^>]*>.*?</\1>", re.DOTALL)
 INJECTED_PREFIX = ("# AGENTS.md instructions", "<environment_context>", "<user_instructions>", "<INSTRUCTIONS>",
                    "Caveat: The messages below", "<command-name>", "<local-command-stdout>")
 
@@ -39,13 +44,14 @@ def clean_user(text):
 
 def read_jsonl(path):
     out = []
-    for line in open(path, encoding="utf-8", errors="replace"):
-        line = line.strip()
-        if line:
-            try:
-                out.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
+    with open(path, encoding="utf-8", errors="replace") as session:
+        for line in session:
+            line = line.strip()
+            if line:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
     return out
 
 
@@ -180,7 +186,7 @@ def files_from(name, args):
     files = set()
     if isinstance(args, dict):
         for k in PATH_KEYS:
-            if isinstance(args.get(k), str) and name and re.search(r"write|edit|patch|create|notebook", name, re.I):
+            if isinstance(args.get(k), str) and name and re.search(r"write|edit|patch|create|notebook", name, re.IGNORECASE):
                 files.add(args[k])
         for ch in args.get("changes") or []:
             if isinstance(ch, dict) and ch.get("path"):
@@ -259,8 +265,8 @@ def _first_cwd(path):
                 c = (o.get("payload") or {}).get("cwd") or o.get("cwd")
                 if c:
                     return os.path.realpath(c)
-    except Exception:
-        pass
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
     return None
 
 

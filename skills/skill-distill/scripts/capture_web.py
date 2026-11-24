@@ -19,7 +19,18 @@ Use it from checks.sh so the reference and every student trial are captured the 
 Writes OUT/*.png, OUT/console.log, OUT/capture.json (errors, js results, per-shot "blank" flag).
 Exit code 0 if the page loaded with no uncaught errors and the first shot is not blank, else 1.
 """
-import argparse, json, os, shlex, signal, socket, subprocess, sys, time, urllib.request
+import argparse
+import http.client
+import json
+import os
+import shlex
+import signal
+import socket
+import subprocess
+import sys
+import time
+import urllib.request
+from contextlib import suppress
 from pathlib import Path
 
 DEFAULT_ACTIONS = [{"wait": 2500}, {"shot": "01-load"}, {"press": "Enter"}, {"click": [640, 420]}, {"wait": 800},
@@ -35,15 +46,17 @@ def wait_http(url, secs):
     end = time.time() + secs
     while time.time() < end:
         try:
-            urllib.request.urlopen(url, timeout=3); return True
-        except Exception:
+            with urllib.request.urlopen(url, timeout=3):
+                return True
+        except (OSError, ValueError, http.client.HTTPException):
             time.sleep(0.5)
     return False
 
 
 def blank(png):
     from PIL import Image, ImageStat
-    im = Image.open(png).convert("L").resize((160, 100))
+    with Image.open(png) as image:
+        im = image.convert("L").resize((160, 100))
     return ImageStat.Stat(im).stddev[0] < 4.0   # a flat single-colour frame
 
 
@@ -56,14 +69,15 @@ def main():
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     port = free_port()
     cmd = (a.start or f"{shlex.quote(sys.executable)} -m http.server {{port}} --bind 127.0.0.1").replace("{port}", str(port))
-    log = open(out / "server.log", "w")
-    srv = subprocess.Popen(cmd, shell=True, cwd=a.dir, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    with open(out / "server.log", "w") as log:
+        srv = subprocess.Popen(cmd, shell=True, cwd=a.dir, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
     url = f"http://127.0.0.1:{port}{a.path}"
     res = {"url": url, "server": cmd, "errors": [], "console": [], "js": [], "shots": {}, "ok": False}
     try:
         if not wait_http(url, a.boot_secs):
             res["errors"].append(f"server did not answer at {url} within {a.boot_secs}s")
             return finish(out, res)
+        from playwright.sync_api import Error as PlaywrightError
         from playwright.sync_api import sync_playwright
         actions = json.loads(Path(a.actions).read_text()) if a.actions else DEFAULT_ACTIONS
         w, h = map(int, a.size.split("x"))
@@ -84,15 +98,15 @@ def main():
                     elif "js" in st: res["js"].append({"expr": st["js"], "value": pg.evaluate(st["js"])})
                     elif "shot" in st:
                         f = out / f"{st['shot']}.png"; pg.screenshot(path=str(f)); res["shots"][f.name] = {"blank": blank(f)}
-                except Exception as e:
+                except (PlaywrightError, OSError, ValueError, TypeError, KeyError) as e:
                     res["errors"].append(f"step {st}: {e}".splitlines()[0])
             b.close()
         first = next(iter(res["shots"].values()), {"blank": True})
         page_errors = [e for e in res["errors"] if not e.startswith("step ")]
         res["ok"] = not page_errors and not first["blank"]
     finally:
-        try: os.killpg(srv.pid, signal.SIGTERM)
-        except Exception: pass
+        with suppress(ProcessLookupError):
+            os.killpg(srv.pid, signal.SIGTERM)
     return finish(out, res)
 
 

@@ -17,5 +17,7 @@ Contract: write the harness's session log to `$TRACE_DIR/session.jsonl`, stream 
 stdout, and exit with the harness's exit code. Turn off the user's global context files and skills where
 the harness allows it, so the only instructions the student gets are the prompt and the skill under test.
 
+`STUDENT_ARGS` is split on whitespace; wildcard characters are passed literally rather than expanded.
+
 Adding a harness: copy `omp.sh`, change the command, and check that `extract_session.py` reads the log
 (add a parser there if it doesn't).

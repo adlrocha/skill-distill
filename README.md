@@ -70,6 +70,12 @@ students work with `tmux attach -t distill-<task>`.
 | pi | written, untested |
 | opencode | written, untested; its JSON log has no parser in `extract_session.py` yet |
 
+## Development
+
+Run `pytest -q` for the helper and adapter tests. They use stubs and do not
+start a model or a browser. Run `ruff check tests skills/skill-distill/scripts`
+and `shellcheck skills/skill-distill/adapters/*.sh` to check the code.
+
 ## License
 
 MIT
